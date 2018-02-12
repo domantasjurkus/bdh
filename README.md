@@ -5,7 +5,7 @@ Assumptions:
 
 Design decision:
 - Program is split into three jobs:
-  1. Clean output into a line format: `article_title 1.0 outlink outlink outlink ...`
-  2. Iterate to update score
-  3. Save output in format: `article_id score`
+  - Clean output into a line format: `article_title 1.0 outlink outlink outlink ...`
+  - Iterate to update score
+  - Save output in format: `article_id score`
 - Only the most recent revision for an article is kept.
