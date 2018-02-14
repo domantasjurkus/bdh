@@ -1,14 +1,8 @@
 package mapreduce;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.StringTokenizer;
+import java.util.Iterator;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
@@ -23,61 +17,70 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-public class PageRankIterate extends Configured implements Tool {
-	static Integer iterations = 1;
+public class knaRegaP extends Configured implements Tool {
+	static Double BASE_SCORE = 0.15;
+	static Double DAMMING_FACTOR = 0.85;
 
 	public static class Map extends Mapper<LongWritable, Text, Text, Text>{
 
 		public void map(LongWritable __, Text val, Context context) throws IOException, InterruptedException {
-			// ...
+			String[] line = val.toString().split("\\s+");
+			if (line.length < 2) return;
+			
+			//String key = line[0];
+			
+			Double score = Double.parseDouble(line[1]);
+			Integer outlinkCount = line.length-2;
+			Double contribution = score/outlinkCount;
+			
+			for (int i=0; i<outlinkCount; i++) {
+				Text outlink = new Text(line[i+2]);
+				context.write(outlink, new Text(contribution.toString()));
+			}
 		}
 	}
 
 	public static class Reduce extends Reducer<Text, Text, Text, Text> {
 		
-		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-			// ...
+		public void reduce(Text key, Iterable<Text> contributions, Context context) throws IOException, InterruptedException {
+			Iterator<Text> itr = contributions.iterator();
+			if (!itr.hasNext()) return;
+			
+			Double sum = 0.0;
+			
+			while (itr.hasNext()) {
+				sum += Double.parseDouble(itr.next().toString());
+			}
+			
+			Double score = BASE_SCORE + DAMMING_FACTOR*sum;
+			context.write(key, new Text(score.toString()));
 		}
 	}
 
 	public int run(String[] args) throws Exception {
 		Job job = Job.getInstance(getConf(), "PageRank");
-		job.setJarByClass(PageRankIterate.class);
+		job.setJarByClass(knaRegaP.class);
 
 		job.setMapperClass(Map.class);
-		//job.setCombinerClass(Reduce.class);
 		job.setReducerClass(Reduce.class);
-
 		job.setInputFormatClass(TextInputFormat.class);
 		
-		// Map output (auto sets reducer input classes)
 		job.setMapOutputKeyClass(Text.class);
 		job.setMapOutputValueClass(Text.class);
 		
-		// Final output
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 		job.setOutputFormatClass(TextOutputFormat.class);
 
-		List<String> other_args = new ArrayList<String>();
-		for (int i=0; i<args.length; ++i) {
-			other_args.add(args[i]);
-		}
-		FileInputFormat.setInputPaths(job, new Path(other_args.get(0)));
-		FileOutputFormat.setOutputPath(job, new Path(other_args.get(1)));
-		
-		// Set iteration count
-		try {
-			iterations = Integer.parseInt(other_args.get(2));
-		} catch (Exception e) { }
+		FileInputFormat.setInputPaths(job, new Path(args[0]));
+		FileOutputFormat.setOutputPath(job, new Path(args[1]));
 		 
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
 	
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		//conf.set("textinputformat.record.delimiter", "\n\n");
-		System.exit(ToolRunner.run(conf, new PageRankIterate(), args));
+		System.exit(ToolRunner.run(conf, new knaRegaP(), args));
 	}
 
 }

@@ -1,1 +1,1 @@
-hdfs dfs -cat pagerank_00/part-r-00000
+hdfs dfs -cat pagerank_3/part-r-00000

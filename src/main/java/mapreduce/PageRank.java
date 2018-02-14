@@ -1,88 +1,86 @@
 package mapreduce;
 
 import java.io.IOException;
+import java.util.Iterator;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 public class PageRank extends Configured implements Tool {
+	static Double BASE_SCORE = 0.15;
+	static Double DAMMING_FACTOR = 0.85;
 
-	// Your mapper class; remember to set the input and output key/value class appropriately in the <...> part below.
-	static class MyMapper extends Mapper<IntWritable, Text, IntWritable, Text> {
-		@Override
-		protected void setup(Context context) throws IOException, InterruptedException {
-			super.setup(context);
-			// ...
-		}
+	public static class Map extends Mapper<LongWritable, Text, Text, Text>{
 
-		// The main map() function; the input key/value classes must match the first two above, and the key/value classes in your emit() statement must match the latter two above.
-		@Override
-		protected void map(IntWritable key, Text value, Context context) throws IOException, InterruptedException {
-			// ...
-		}
-
-		@Override
-		protected void cleanup(Context context) throws IOException, InterruptedException {
-			// ...
-			super.cleanup(context);
+		public void map(LongWritable __, Text val, Context context) throws IOException, InterruptedException {
+			String[] line = val.toString().split("\\s+");
+			if (line.length < 2) return;
+			
+			//String key = line[0];
+			
+			Double score = Double.parseDouble(line[1]);
+			Integer outlinkCount = line.length-2;
+			Double contribution = score/outlinkCount;
+			
+			for (int i=0; i<outlinkCount; i++) {
+				Text outlink = new Text(line[i+2]);
+				context.write(outlink, new Text(contribution.toString()));
+			}
 		}
 	}
 
-	// Your reducer class; remember to set the input and output key/value class appropriately in the <...> part below.
-	static class MyReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
-		@Override
-		protected void setup(Context context) throws IOException, InterruptedException {
-			super.setup(context);
-			// ...
-		}
+	public static class Reduce extends Reducer<Text, Text, Text, Text> {
 		
-		// The main reduce() function; the input key/value classes must match the first two above, and the key/value classes in your emit() statement must match the latter two above.
-		// Make sure that the output key/value classes also match those set in your job's configuration (see below).
-		@Override
-		protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-			// ...
-		}
-		
-		@Override
-		protected void cleanup(Context context) throws IOException, InterruptedException {
-			// ...
-			super.cleanup(context);
+		public void reduce(Text key, Iterable<Text> contributions, Context context) throws IOException, InterruptedException {
+			Iterator<Text> itr = contributions.iterator();
+			if (!itr.hasNext()) return;
+			
+			Double sum = 0.0;
+			
+			while (itr.hasNext()) {
+				sum += Double.parseDouble(itr.next().toString());
+			}
+			
+			Double score = BASE_SCORE + DAMMING_FACTOR*sum;
+			context.write(key, new Text(score.toString()));
 		}
 	}
 
-	// Your main Driver method. Note: everything in this method runs locally at the client.
 	public int run(String[] args) throws Exception {
-		// 0. Instantiate a Job object; remember to pass the Driver's configuration on to the job
-		Job job = Job.getInstance(getConf());
-
-		// 1. Set the jar name in the job's conf; thus the Driver will know which file to send to the cluster
+		Job job = Job.getInstance(getConf(), "PageRank");
 		job.setJarByClass(PageRank.class);
 
-		// 2. Set mapper and reducer classes
-		// ...
+		job.setMapperClass(Map.class);
+		job.setReducerClass(Reduce.class);
+		job.setInputFormatClass(TextInputFormat.class);
+		
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputValueClass(Text.class);
+		
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(Text.class);
+		job.setOutputFormatClass(TextOutputFormat.class);
 
-		// 3. Set input and output format, mapper output key and value classes, and final output key and value classes
-		// ...
-
-		// 4. Set input and output paths; remember, these will be HDFS paths or URLs
-		// ...
-
-		// 5. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
-		// ...
-
-		// 6. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
-		boolean succeeded = job.waitForCompletion(true);
-		return (succeeded ? 0 : 1);
+		FileInputFormat.setInputPaths(job, new Path(args[0]));
+		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		 
+		return job.waitForCompletion(true) ? 0 : 1;
 	}
-
+	
 	public static void main(String[] args) throws Exception {
-		System.exit(ToolRunner.run(new Configuration(), new PageRank(), args));
+		Configuration conf = new Configuration();
+		System.exit(ToolRunner.run(conf, new PageRank(), args));
 	}
+
 }

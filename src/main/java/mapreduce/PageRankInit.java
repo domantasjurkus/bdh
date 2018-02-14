@@ -1,14 +1,7 @@
 package mapreduce;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.StringTokenizer;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
@@ -32,6 +25,7 @@ public class PageRankInit extends Configured implements Tool {
 			String key = "";
 			String revisionNumber = "0";
 			String outLinks = "";
+			String previousOutlink = "";
 			
 			boolean outLinksStarted = false;
 			int i = 0;
@@ -39,15 +33,18 @@ public class PageRankInit extends Configured implements Tool {
 			try {
 				while (true) {
 					// Get title and revision number
-					//if (strings[i].equals("REVISION") && StringUtils.isNumeric(strings[i+1]) && StringUtils.isNumeric(strings[i+2]) ) {
 					if (strings[i].equals("REVISION")) { 
 						key = strings[i+3];
 						revisionNumber = strings[i+2];
 					}
 					
-					// Get outlinks
+					// Get out-links
 					if (outLinksStarted) {
-						outLinks += " " + strings[i];
+						// Skip duplicates (assuming they come in order)
+						if (!strings[i].equals(previousOutlink)) {
+							outLinks += " " + strings[i];
+							previousOutlink = strings[i];
+						}
 					}
 					
 					if (strings[i].equals("MAIN")) {
@@ -60,9 +57,7 @@ public class PageRankInit extends Configured implements Tool {
 						break;
 					}
 				}
-			} catch (Exception e) {
-				
-			}
+			} catch (Exception e) {}
 			
 			context.write(new Text(key), new Text(revisionNumber + " " + outLinks));
 		}
@@ -74,8 +69,6 @@ public class PageRankInit extends Configured implements Tool {
 			String payload = "";
 			Integer lastHighestRevisionNumber = 0;
 			
-			int i = 0;
-			
 			// Keep only the most recent revision
 			for (Text v : values) {
 				String line = v.toString();
@@ -84,16 +77,13 @@ public class PageRankInit extends Configured implements Tool {
 					int firstSpaceIndex = revNo.length();
 					payload = line.substring(firstSpaceIndex+1, line.length());
 				}
-				
-				i++;
 			}
 			
 			context.write(key, new Text("1.0 " + payload));
 		}
 	}
-
-	public int run(String[] args) throws Exception {
-		Job job = Job.getInstance(getConf(), "PageRankInit");
+	
+	public void setup(Job job) {
 		job.setJarByClass(PageRankInit.class);
 
 		job.setMapperClass(Map.class);
@@ -110,13 +100,14 @@ public class PageRankInit extends Configured implements Tool {
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 		job.setOutputFormatClass(TextOutputFormat.class);
+	}
 
-		List<String> other_args = new ArrayList<String>();
-		for (int i=0; i<args.length; ++i) {
-			other_args.add(args[i]);
-		}
-		FileInputFormat.setInputPaths(job, new Path(other_args.get(0)));
-		FileOutputFormat.setOutputPath(job, new Path(other_args.get(1)));
+	public int run(String[] args) throws Exception {
+		Job job = Job.getInstance(getConf(), "PageRankInit");
+		this.setup(job);
+		
+		FileInputFormat.setInputPaths(job, new Path(args[0]));
+		FileOutputFormat.setOutputPath(job, new Path(args[1]));
 		
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
