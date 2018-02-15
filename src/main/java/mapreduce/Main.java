@@ -6,7 +6,7 @@ import org.apache.hadoop.util.ToolRunner;
 public class Main {
 
 	public static void main(String[] args) throws Exception {
-		String finalOutputDir = "a.out";
+		String finalOutputDir = "default.out";
 		int iterations = 1;
 		
 		try {
@@ -15,7 +15,7 @@ public class Main {
 		} catch (Exception e) {}
 		
 		// Initial clean
-		args[1] = "pagerank_0";
+		args[1] = finalOutputDir + "0";
 		
 		Configuration conf = new Configuration();
 		conf.set("textinputformat.record.delimiter", "\n\n");
@@ -26,8 +26,8 @@ public class Main {
 		//ToolRunner.run(conf, new PageRank(), newArgs);
 		
 		for (Integer i=0; i<iterations; ) {
-			String inputDir = "pagerank_" + i.toString();
-			String outputDir = "pagerank_" + (++i).toString();
+			String inputDir = finalOutputDir + i.toString();
+			String outputDir = finalOutputDir + (++i).toString();
 			
 			String[] newArgs = {inputDir, outputDir};
 			ToolRunner.run(conf, new PageRank(), newArgs);

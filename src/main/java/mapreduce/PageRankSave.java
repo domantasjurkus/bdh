@@ -17,49 +17,25 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-public class knaRegaP extends Configured implements Tool {
-	static Double BASE_SCORE = 0.15;
-	static Double DAMMING_FACTOR = 0.85;
+public class PageRankSave extends Configured implements Tool {
 
 	public static class Map extends Mapper<LongWritable, Text, Text, Text>{
 
 		public void map(LongWritable __, Text val, Context context) throws IOException, InterruptedException {
-			String[] line = val.toString().split("\\s+");
-			if (line.length < 2) return;
-			
-			//String key = line[0];
-			
-			Double score = Double.parseDouble(line[1]);
-			Integer outlinkCount = line.length-2;
-			Double contribution = score/outlinkCount;
-			
-			for (int i=0; i<outlinkCount; i++) {
-				Text outlink = new Text(line[i+2]);
-				context.write(outlink, new Text(contribution.toString()));
-			}
+
 		}
 	}
 
 	public static class Reduce extends Reducer<Text, Text, Text, Text> {
 		
 		public void reduce(Text key, Iterable<Text> contributions, Context context) throws IOException, InterruptedException {
-			Iterator<Text> itr = contributions.iterator();
-			if (!itr.hasNext()) return;
-			
-			Double sum = 0.0;
-			
-			while (itr.hasNext()) {
-				sum += Double.parseDouble(itr.next().toString());
-			}
-			
-			Double score = BASE_SCORE + DAMMING_FACTOR*sum;
-			context.write(key, new Text(score.toString()));
+
 		}
 	}
 
 	public int run(String[] args) throws Exception {
 		Job job = Job.getInstance(getConf(), "PageRank");
-		job.setJarByClass(knaRegaP.class);
+		job.setJarByClass(PageRankSave.class);
 
 		job.setMapperClass(Map.class);
 		job.setReducerClass(Reduce.class);
@@ -80,7 +56,7 @@ public class knaRegaP extends Configured implements Tool {
 	
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		System.exit(ToolRunner.run(conf, new knaRegaP(), args));
+		System.exit(ToolRunner.run(conf, new PageRankSave(), args));
 	}
 
 }

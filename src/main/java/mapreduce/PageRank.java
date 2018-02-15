@@ -23,37 +23,64 @@ public class PageRank extends Configured implements Tool {
 
 	public static class Map extends Mapper<LongWritable, Text, Text, Text>{
 
+		// val = <article, score, out, out, out, ...>
 		public void map(LongWritable __, Text val, Context context) throws IOException, InterruptedException {
 			String[] line = val.toString().split("\\s+");
-			if (line.length < 2) return;
+			//if (line.length < 2) return;
 			
-			//String key = line[0];
+			String article = line[0];
+			Double score = 0.0;
+			try {
+				score = Double.parseDouble(line[1]);
+			} catch(Exception e) {}
 			
-			Double score = Double.parseDouble(line[1]);
 			Integer outlinkCount = line.length-2;
 			Double contribution = score/outlinkCount;
+			String outLinks = "!!!";
 			
+			// We need to emit both, contributions to out-links
 			for (int i=0; i<outlinkCount; i++) {
 				Text outlink = new Text(line[i+2]);
 				context.write(outlink, new Text(contribution.toString()));
+				outLinks += outlink + " ";
 			}
+
+			// and the article itself with its out-links in order to save them
+			context.write(new Text(article), new Text(outLinks));
 		}
 	}
 
 	public static class Reduce extends Reducer<Text, Text, Text, Text> {
 		
-		public void reduce(Text key, Iterable<Text> contributions, Context context) throws IOException, InterruptedException {
-			Iterator<Text> itr = contributions.iterator();
-			if (!itr.hasNext()) return;
+		public void reduce(Text key, Iterable<Text> lines, Context context) throws IOException, InterruptedException {
+			Iterator<Text> itr = lines.iterator();
+			//if (!itr.hasNext()) return;
+			
+			// Multiplex here: if there are out-links - sum them
+			// If there are not - just save the score given
 			
 			Double sum = 0.0;
+			String outLinks = "";
 			
 			while (itr.hasNext()) {
-				sum += Double.parseDouble(itr.next().toString());
+				String[] line = itr.next().toString().split("!!!");
+
+				// Save out-links
+				if (line.length > 1) {
+					outLinks = line[1];
+				} else {
+					try {
+					sum += Double.parseDouble(line[0]);
+					} catch(Exception e) {}
+				}
 			}
 			
+			// Save score
 			Double score = BASE_SCORE + DAMMING_FACTOR*sum;
 			context.write(key, new Text(score.toString()));
+			
+			// Save out-links if present
+			context.write(key, new Text(outLinks));
 		}
 	}
 
