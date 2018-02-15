@@ -87,9 +87,7 @@ public class PageRankInit extends Configured implements Tool {
 		job.setJarByClass(PageRankInit.class);
 
 		job.setMapperClass(Map.class);
-		//job.setCombinerClass(Reduce.class);
 		job.setReducerClass(Reduce.class);
-
 		job.setInputFormatClass(TextInputFormat.class);
 		
 		// Map output (auto sets reducer input classes)

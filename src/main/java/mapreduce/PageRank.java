@@ -54,33 +54,34 @@ public class PageRank extends Configured implements Tool {
 		
 		public void reduce(Text key, Iterable<Text> lines, Context context) throws IOException, InterruptedException {
 			Iterator<Text> itr = lines.iterator();
-			//if (!itr.hasNext()) return;
-			
-			// Multiplex here: if there are out-links - sum them
-			// If there are not - just save the score given
+			if (!itr.hasNext()) return;
 			
 			Double sum = 0.0;
 			String outLinks = "";
+			String[] line = {};
 			
 			while (itr.hasNext()) {
-				String[] line = itr.next().toString().split("!!!");
+				line = itr.next().toString().split("!!!");
 
 				// Save out-links
 				if (line.length > 1) {
 					outLinks = line[1];
 				} else {
 					try {
-					sum += Double.parseDouble(line[0]);
+						sum += Double.parseDouble(line[0]);
 					} catch(Exception e) {}
 				}
 			}
 			
 			// Save score
 			Double score = BASE_SCORE + DAMMING_FACTOR*sum;
-			context.write(key, new Text(score.toString()));
 			
 			// Save out-links if present
-			context.write(key, new Text(outLinks));
+			if (line.length > 1) {
+				context.write(key, new Text(score.toString() + " " + outLinks));
+			} else {
+				context.write(key, new Text(score.toString()));
+			}
 		}
 	}
 
@@ -101,12 +102,19 @@ public class PageRank extends Configured implements Tool {
 
 		FileInputFormat.setInputPaths(job, new Path(args[0]));
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		System.out.println(args[0] + " -> " + args[1]);
 		 
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
 	
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
+		
+		// For debugging - remove for submission
+		Integer iterations = 1;
+		try {
+			iterations = Integer.parseInt(args[2]);
+		} catch (Exception e) {}
 		System.exit(ToolRunner.run(conf, new PageRank(), args));
 	}
 

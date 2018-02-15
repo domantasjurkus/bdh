@@ -20,14 +20,12 @@ public class Main {
 		Configuration conf = new Configuration();
 		conf.set("textinputformat.record.delimiter", "\n\n");
 		ToolRunner.run(conf, new PageRankInit(), args);
-		
-		// First iteration
-		//String newArgs[] = {"pagerank_00", "pagerank_01"};
-		//ToolRunner.run(conf, new PageRank(), newArgs);
+		conf.set("textinputformat.record.delimiter", "\n");
 		
 		for (Integer i=0; i<iterations; ) {
 			String inputDir = finalOutputDir + i.toString();
-			String outputDir = finalOutputDir + (++i).toString();
+			i++;
+			String outputDir = finalOutputDir + i.toString();
 			
 			String[] newArgs = {inputDir, outputDir};
 			ToolRunner.run(conf, new PageRank(), newArgs);
