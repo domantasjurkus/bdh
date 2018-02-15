@@ -34,7 +34,11 @@ public class knaRegaP extends Configured implements Tool {
 			Double contribution = score/outlinkCount;
 			
 			for (int i=0; i<outlinkCount; i++) {
+
+				// The line below here new Text(line[i]) worked fine though of the difference
+				// What happens when i = outlinkCount
 				Text outlink = new Text(line[i+2]);
+				
 				context.write(outlink, new Text(contribution.toString()));
 			}
 		}
@@ -49,7 +53,8 @@ public class knaRegaP extends Configured implements Tool {
 			Double sum = 0.0;
 			
 			while (itr.hasNext()) {
-				sum += Double.parseDouble(itr.next().toString());
+				// Also why += and not just =
+				sum = Double.parseDouble(itr.next().toString());
 			}
 			
 			Double score = BASE_SCORE + DAMMING_FACTOR*sum;
