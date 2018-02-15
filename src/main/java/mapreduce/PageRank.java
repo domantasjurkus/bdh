@@ -20,10 +20,11 @@ import org.apache.hadoop.util.ToolRunner;
 public class PageRank extends Configured implements Tool {
 	static Double BASE_SCORE = 0.15;
 	static Double DAMMING_FACTOR = 0.85;
+	static String DELIMITER = "&&&";
 
 	public static class Map extends Mapper<LongWritable, Text, Text, Text>{
 
-		// val = <article, score, out, out, out, ...>
+		// val = <article, score [, outlinks]>
 		public void map(LongWritable __, Text val, Context context) throws IOException, InterruptedException {
 			String[] line = val.toString().split("\\s+");
 			//if (line.length < 2) return;
@@ -36,22 +37,23 @@ public class PageRank extends Configured implements Tool {
 			
 			Integer outlinkCount = line.length-2;
 			Double contribution = score/outlinkCount;
-			String outLinks = "!!!";
+			String outLinks = DELIMITER;
 			
-			// We need to emit both, contributions to out-links
+			// Emit contributions to out-links
 			for (int i=0; i<outlinkCount; i++) {
 				Text outlink = new Text(line[i+2]);
 				context.write(outlink, new Text(contribution.toString()));
 				outLinks += outlink + " ";
 			}
 
-			// and the article itself with its out-links in order to save them
-			context.write(new Text(article), new Text(outLinks));
+			// Save out-links, padded with a placeholder score
+			context.write(new Text(article), new Text(score + " " + outLinks));
 		}
 	}
 
 	public static class Reduce extends Reducer<Text, Text, Text, Text> {
 		
+		// Some entries <>
 		public void reduce(Text key, Iterable<Text> lines, Context context) throws IOException, InterruptedException {
 			Iterator<Text> itr = lines.iterator();
 			if (!itr.hasNext()) return;
@@ -61,15 +63,13 @@ public class PageRank extends Configured implements Tool {
 			String[] line = {};
 			
 			while (itr.hasNext()) {
-				line = itr.next().toString().split("!!!");
+				line = itr.next().toString().split(DELIMITER);
 
 				// Save out-links
 				if (line.length > 1) {
 					outLinks = line[1];
 				} else {
-					try {
-						sum += Double.parseDouble(line[0]);
-					} catch(Exception e) {}
+					sum += Double.parseDouble(line[0]);
 				}
 			}
 			
@@ -77,11 +77,7 @@ public class PageRank extends Configured implements Tool {
 			Double score = BASE_SCORE + DAMMING_FACTOR*sum;
 			
 			// Save out-links if present
-			if (line.length > 1) {
-				context.write(key, new Text(score.toString() + " " + outLinks));
-			} else {
-				context.write(key, new Text(score.toString()));
-			}
+			context.write(key, new Text(score.toString() + " " + outLinks));
 		}
 	}
 
@@ -109,12 +105,6 @@ public class PageRank extends Configured implements Tool {
 	
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		
-		// For debugging - remove for submission
-		Integer iterations = 1;
-		try {
-			iterations = Integer.parseInt(args[2]);
-		} catch (Exception e) {}
 		System.exit(ToolRunner.run(conf, new PageRank(), args));
 	}
 
