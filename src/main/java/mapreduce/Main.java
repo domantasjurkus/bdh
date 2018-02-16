@@ -7,12 +7,14 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 		String finalOutputDir = "default.out";
-		int iterations = 1;
+		Integer iterations = 1;
 		
 		try {
 			finalOutputDir = args[1];
 			iterations = Integer.parseInt(args[2]);
 		} catch (Exception e) {}
+		
+		System.out.println("Iterations: " + iterations.toString());
 		
 		// Initial clean
 		args[1] = finalOutputDir + "0";

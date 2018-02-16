@@ -24,10 +24,9 @@ public class PageRank extends Configured implements Tool {
 
 	public static class Map extends Mapper<LongWritable, Text, Text, Text>{
 
-		// val = <article, score [, outlinks]>
+		// input = <offset: article score [out_links]>
 		public void map(LongWritable __, Text val, Context context) throws IOException, InterruptedException {
 			String[] line = val.toString().split("\\s+");
-			//if (line.length < 2) return;
 			
 			String article = line[0];
 			Double score = 0.0;
@@ -37,8 +36,9 @@ public class PageRank extends Configured implements Tool {
 			
 			Integer outlinkCount = line.length-2;
 			Double contribution = score/outlinkCount;
-			String outLinks = DELIMITER;
-			
+
+			String outLinks = "";
+		
 			// Emit contributions to out-links
 			for (int i=0; i<outlinkCount; i++) {
 				Text outlink = new Text(line[i+2]);
@@ -47,13 +47,14 @@ public class PageRank extends Configured implements Tool {
 			}
 
 			// Save out-links, padded with a placeholder score
-			context.write(new Text(article), new Text(score + " " + outLinks));
+			context.write(new Text(article), new Text("0.0" + DELIMITER + outLinks));
 		}
 	}
 
 	public static class Reduce extends Reducer<Text, Text, Text, Text> {
 		
-		// Some entries <>
+		// Contribution entry: <article: contribution>
+		// Out-link entry: <article: 0.0 DELIMITER [out_links]>
 		public void reduce(Text key, Iterable<Text> lines, Context context) throws IOException, InterruptedException {
 			Iterator<Text> itr = lines.iterator();
 			if (!itr.hasNext()) return;
