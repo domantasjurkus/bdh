@@ -32,5 +32,10 @@ public class Main {
 			String[] newArgs = {inputDir, outputDir};
 			ToolRunner.run(conf, new PageRank(), newArgs);
 		}
+		
+		// Remove out-links for final output
+		args[0] = finalOutputDir + iterations.toString();
+		args[1] = finalOutputDir;
+		ToolRunner.run(conf, new PageRankFinish(), args);
 	}
 }
