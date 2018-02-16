@@ -4,6 +4,7 @@
 - All revision entries have a `REVISION`, `MAIN` and `TALK` section.
 - Assumed that at least iteration of PageRank is run (n >= 1) to form complete set of outlinks, otherwise the initial job will not generate all of the outlinks.
 - Duplicates are assumed to be ordered (duplicates are in sequence).
+- Most recent revision has the highest revision number.
 
 ### Design decisions:
 - Intermediate folders are not deleted
